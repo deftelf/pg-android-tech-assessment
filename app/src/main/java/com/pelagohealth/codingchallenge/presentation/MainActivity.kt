@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.pelagohealth.codingchallenge
 
 import android.os.Bundle
@@ -19,11 +21,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
@@ -59,8 +67,13 @@ class MainActivity : ComponentActivity() {
                         is MainViewModel.Event.StartActivity -> {
                             startActivity(it.intent)
                         }
+
                         MainViewModel.Event.FailedFetch -> {
-                            Toast.makeText(this@MainActivity, "Failed to fetch a fact", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Failed to fetch a fact",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 }
@@ -95,28 +108,47 @@ fun MainScreen(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         val loadingState = viewModel.incomingFactStatus.collectAsState().value
-        Button(onClick = { viewModel.fetchNewFact() },
-            enabled = loadingState !is PendingFact.Loading) {
+        Button(
+            onClick = { viewModel.fetchNewFact() },
+            enabled = loadingState !is PendingFact.Loading
+        ) {
             Box {
                 Text("More facts!")
                 if (loadingState is PendingFact.Loading) {
                     CircularProgressIndicator(
                         Modifier
                             .size(16.dp)
-                            .align(Alignment.Center))
+                            .align(Alignment.Center)
+                    )
                 }
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
         val facts = viewModel.facts.collectAsState().value
-        LazyColumn(modifier = Modifier
-            .padding(8.dp)
-            .fillMaxWidth(),
+        LazyColumn(
+            modifier = Modifier
+                .padding(8.dp)
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(facts.size, key = { facts[it].id }) {
-                val fact = facts[it]
-                FactItem(fact, viewModel, Modifier.animateItemPlacement())
+            items(facts.size, key = { facts[it].id }) { index ->
+                val fact = facts[index]
+                val currentItem by rememberUpdatedState(fact)
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = {
+                        when (it) {
+                            SwipeToDismissBoxValue.StartToEnd, SwipeToDismissBoxValue.EndToStart -> {
+                                viewModel.onRemove(currentItem)
+                            }
+                            SwipeToDismissBoxValue.Settled -> return@rememberSwipeToDismissBoxState false
+                        }
+                        true
+                    },
+                    positionalThreshold = { it * .5f }
+                )
+                SwipeToDismissBox(state = dismissState, backgroundContent = {}) {
+                    FactItem(fact, viewModel, Modifier.animateItemPlacement())
+                }
             }
         }
     }

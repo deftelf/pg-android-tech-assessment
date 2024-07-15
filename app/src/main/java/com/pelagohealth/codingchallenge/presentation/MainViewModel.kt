@@ -62,6 +62,10 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun onRemove(fact: Fact) {
+        facts.value -= fact
+    }
+
     sealed class Event {
         data class StartActivity(val intent: Intent) : Event()
         data object FailedFetch : Event()
