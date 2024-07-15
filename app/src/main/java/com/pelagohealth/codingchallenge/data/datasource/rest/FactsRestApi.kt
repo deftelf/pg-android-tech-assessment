@@ -7,6 +7,6 @@ import retrofit2.http.GET
  */
 interface FactsRestApi {
 
-    @GET("/facts/random")
+    @GET("/api/v2/facts/random")
     suspend fun getFact(): APIFact
 }
