@@ -17,6 +17,7 @@ class FactRepository @Inject constructor(
         return withContext(Dispatchers.IO) { // TODO inject dispatchers
             api.getFact().let {
                 Fact(
+                    it.id,
                     it.text,
                     it.sourceUrl
                 )
