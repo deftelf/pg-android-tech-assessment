@@ -146,8 +146,8 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     },
                     positionalThreshold = { it * .5f }
                 )
-                SwipeToDismissBox(state = dismissState, backgroundContent = {}) {
-                    FactItem(fact, viewModel, Modifier.animateItemPlacement())
+                SwipeToDismissBox(state = dismissState, backgroundContent = {}, modifier = Modifier.animateItemPlacement()) {
+                    FactItem(fact, viewModel)
                 }
             }
         }
