@@ -7,11 +7,14 @@ import androidx.core.content.ContextCompat.startActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pelagohealth.codingchallenge.data.repository.FactRepository
+import com.pelagohealth.codingchallenge.domain.model.Fact
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,7 +24,9 @@ class MainViewModel @Inject constructor(
     private val factsRepository: FactRepository,
 ) : ViewModel() {
 
-    val fact: MutableStateFlow<PendingFact> = MutableStateFlow(PendingFact.Loading)
+    val facts: MutableStateFlow<List<Fact>> = MutableStateFlow(emptyList())
+    val incomingFactStatus: MutableStateFlow<PendingFact> = MutableStateFlow(PendingFact.Loading)
+    private var factFetchJob: Job? = null
     val events: Channel<Event> = Channel()
 
     init {
@@ -29,15 +34,26 @@ class MainViewModel @Inject constructor(
     }
 
     fun fetchNewFact() {
-        fact.value = PendingFact.Loading
-        viewModelScope.launch {
+        factFetchJob?.cancel()
+        incomingFactStatus.value = PendingFact.Loading
+        factFetchJob = viewModelScope.launch {
             try {
-                val loadedFact = factsRepository.get()
-                fact.value = PendingFact.Complete(loadedFact)
+                add(factsRepository.get())
+                incomingFactStatus.value = PendingFact.Complete
             } catch (e: Exception) {
-                fact.value = PendingFact.Failed
+                events.send(Event.FailedFetch)
+                incomingFactStatus.value = PendingFact.Complete
             }
         }
+    }
+
+    private fun add(fact: Fact) {
+        var changedList = facts.value
+        if (changedList.size >= MAX_FACT_LIST_COUNT) {
+            changedList = changedList.takeLast(MAX_FACT_LIST_COUNT - 1)
+        }
+        changedList += listOf(fact)
+        facts.value = changedList
     }
 
     fun onClickedSource(url: String) {
@@ -53,5 +69,10 @@ class MainViewModel @Inject constructor(
 
     sealed class Event {
         data class StartActivity(val intent: Intent) : Event()
+        data object FailedFetch : Event()
+    }
+
+    companion object {
+        private const val MAX_FACT_LIST_COUNT = 3
     }
 }
